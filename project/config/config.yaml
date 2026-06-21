@@ -1,0 +1,5 @@
+groq_api_key: ${GROQ_API_KEY}
+
+# Optional settings
+logging_level: INFO
+cache_backend: "memory"  # options: memory, disk, redis

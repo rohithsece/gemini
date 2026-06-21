@@ -1,0 +1,5 @@
+Method: GET
+Path: /
+Payload: 
+Status: 200 OK
+Response: <h2>Student Management API is running</h2>

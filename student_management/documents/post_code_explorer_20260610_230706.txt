@@ -1,0 +1,8 @@
+Method: POST
+Path: /code
+Payload: 
+Status: 200 OK
+Response: {
+  "output": "Module executed successfully.\nExecuted create_record(): None",
+  "status": "success"
+}

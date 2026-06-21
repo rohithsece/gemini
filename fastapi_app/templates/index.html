@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Antigravity Tool Call UI</title>
+  <style>
+    body {font-family: 'Inter', sans-serif; background: #f0f2f5; padding: 2rem;}
+    .container {max-width: 800px; margin: auto; background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);}
+    h1 {color: #333;}
+    label {display: block; margin-top: 1rem; font-weight: 600;}
+    select, textarea, input {width: 100%; padding: 0.5rem; margin-top: 0.3rem; border: 1px solid #ccc; border-radius: 4px;}
+    button {margin-top: 1rem; background: #4a90e2; color: white; border: none; padding: 0.7rem 1.2rem; border-radius: 4px; cursor: pointer;}
+    button:hover {background: #357ab8;}
+    pre {background: #f8f8f8; padding: 1rem; border-radius: 4px; overflow-x: auto;}
+  </style>
+</head>
+<body>
+<div class="container">
+  <h1>Antigravity Tool Call UI</h1>
+  <form id="toolForm">
+    <label for="toolName">Tool name</label>
+    <select id="toolName" name="tool_name" required>
+      <option value="view_file">view_file</option>
+      <option value="run_command">run_command</option>
+    </select>
+    <label for="args">Arguments (JSON)</label>
+    <textarea id="args" name="arguments" rows="8" placeholder="{ \"AbsolutePath\": \"C:/path/to/file.txt\", \"StartLine\": 1, \"EndLine\": 10 }" required></textarea>
+    <button type="submit">Call Tool</button>
+  </form>
+  <h2>Response</h2>
+  <pre id="responseBox">(no response yet)</pre>
+</div>
+<script>
+  const form = document.getElementById('toolForm');
+  const responseBox = document.getElementById('responseBox');
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const toolName = document.getElementById('toolName').value;
+    let args;
+    try { args = JSON.parse(document.getElementById('args').value); } catch (err) { responseBox.textContent = 'Invalid JSON in arguments'; return; }
+    const payload = {tool_name: toolName, arguments: args};
+    try {
+      const res = await fetch('/tool-call', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload)});
+      const data = await res.json();
+      responseBox.textContent = JSON.stringify(data, null, 2);
+    } catch (err) {
+      responseBox.textContent = 'Request failed: ' + err;
+    }
+  });
+</script>
+</body>
+</html>

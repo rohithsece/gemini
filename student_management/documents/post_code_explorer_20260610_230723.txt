@@ -1,0 +1,8 @@
+Method: POST
+Path: /code
+Payload: 
+Status: 200 OK
+Response: {
+  "output": "Module executed successfully.\nExecuted run(): === Starting Complete CRUD Test Pipeline ===\n\n1. Executing CREATE:\n   Record created (logged to documents)\n\n2. Executing READ:\n   Read 3 records for student 10045\n      ID: 4, Course: Biology 101, Grade: A-\n      ID: 5, Course: Biology 101, Grade: A-\n      ID: 6, Course: Biology 101, Grade: A-\n\n3. Executing UPDATE on Record ID 6:\n   Record updated\n      Verified: New Grade is A-\n\n4. Executing DELETE on Record ID 6:\n   Record deleted\n\n=== CRUD Pipeline Completed Successfully ===",
+  "status": "success"
+}

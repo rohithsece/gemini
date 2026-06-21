@@ -1,0 +1,9 @@
+Method: POST
+Path: /code
+Payload: {'description': 'You are a backend Code Agent for a Student Management System. Your job is to process user requests, extract the relevant student entities, and prepare the data for database modification. \n\nClassify every request into one of four actions: \n- CREATE (Adding new students)\n- READ (Searching/viewing data)\n- UPDATE (Modifying records)\n- DELETE (Removing or archiving)\n\nStrictly isolate the database values from the conversational text. Do not invent details.'}
+Status: 404 NOT FOUND
+Response: <!doctype html>
+<html lang=en>
+<title>404 Not Found</title>
+<h1>Not Found</h1>
+<p>The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again.</p>

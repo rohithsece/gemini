@@ -1,0 +1,8 @@
+Method: POST
+Path: /code
+Payload: 
+Status: 200 OK
+Response: {
+  "output": "Module executed successfully.\nNo callable function found to run.",
+  "status": "success"
+}

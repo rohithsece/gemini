@@ -1,0 +1,2536 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Multi-Agent Code Review Dashboard</title>
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  
+  <style>
+    /* --- CSS Variables & Design System --- */
+    :root {
+      --bg-primary: #070913;
+      --bg-secondary: #0d1222;
+      --bg-tertiary: #131a31;
+      --glass-bg: rgba(13, 18, 34, 0.7);
+      --glass-border: rgba(255, 255, 255, 0.08);
+      --glass-highlight: rgba(255, 255, 255, 0.03);
+      
+      --text-primary: #f1f5f9;
+      --text-secondary: #94a3b8;
+      --text-tertiary: #64748b;
+      
+      --accent-blue: #3b82f6;
+      --accent-purple: #8b5cf6;
+      --accent-emerald: #10b981;
+      --accent-amber: #f59e0b;
+      --accent-rose: #f43f5e;
+      
+      --glow-blue: rgba(59, 130, 246, 0.25);
+      --glow-purple: rgba(139, 92, 246, 0.25);
+      --glow-emerald: rgba(16, 185, 129, 0.25);
+      --glow-rose: rgba(244, 63, 94, 0.25);
+      
+      --font-sans: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+      
+      --radius-sm: 8px;
+      --radius-md: 14px;
+      --radius-lg: 24px;
+      
+      --transition-fast: 0.15s ease;
+      --transition-normal: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    .light-theme {
+      --bg-primary: #f8fafc;
+      --bg-secondary: #ffffff;
+      --bg-tertiary: #f1f5f9;
+      --glass-bg: rgba(255, 255, 255, 0.85);
+      --glass-border: rgba(0, 0, 0, 0.08);
+      --glass-highlight: rgba(0, 0, 0, 0.01);
+      
+      --text-primary: #0f172a;
+      --text-secondary: #475569;
+      --text-tertiary: #94a3b8;
+      
+      --accent-blue: #2563eb;
+      --accent-purple: #7c3aed;
+      --accent-emerald: #059669;
+      --accent-amber: #d97706;
+      --accent-rose: #dc2626;
+      
+      --glow-blue: rgba(37, 99, 235, 0.12);
+      --glow-purple: rgba(124, 58, 237, 0.12);
+      --glow-emerald: rgba(5, 150, 105, 0.12);
+      --glow-rose: rgba(220, 38, 38, 0.12);
+    }
+    
+    /* --- Base Resets & Layout --- */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    
+    body {
+      background-color: var(--bg-primary);
+      color: var(--text-primary);
+      font-family: var(--font-sans);
+      min-height: 100vh;
+      overflow-x: hidden;
+      transition: background-color var(--transition-normal), color var(--transition-normal);
+      line-height: 1.5;
+    }
+    
+    /* Background Glowing Blobs (Glassmorphism design) */
+    .blob {
+      position: absolute;
+      width: 400px;
+      height: 400px;
+      border-radius: 50%;
+      filter: blur(120px);
+      z-index: -1;
+      opacity: 0.35;
+      pointer-events: none;
+      animation: float-blob 20s infinite alternate;
+    }
+    .blob-1 {
+      top: -100px;
+      left: 10%;
+      background: var(--accent-blue);
+    }
+    .blob-2 {
+      bottom: -100px;
+      right: 10%;
+      background: var(--accent-purple);
+      animation-delay: 5s;
+    }
+    @keyframes float-blob {
+      0% { transform: translate(0, 0) scale(1); }
+      100% { transform: translate(60px, 40px) scale(1.15); }
+    }
+    
+    /* --- Header & Layout --- */
+    header {
+      background: var(--glass-bg);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--glass-border);
+      padding: 16px 40px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+    
+    .logo-container {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    
+    .logo-icon {
+      width: 38px;
+      height: 38px;
+      background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 700;
+      font-size: 18px;
+      box-shadow: 0 4px 15px var(--glow-blue);
+    }
+    
+    .logo-title h1 {
+      font-size: 19px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      background: linear-gradient(to right, var(--text-primary), var(--text-secondary));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    
+    .logo-title span {
+      font-size: 11px;
+      color: var(--accent-blue);
+      text-transform: uppercase;
+      font-weight: 600;
+      letter-spacing: 1px;
+      display: block;
+      margin-top: -3px;
+    }
+    
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    
+    .theme-toggle {
+      background: var(--bg-tertiary);
+      border: 1px solid var(--glass-border);
+      color: var(--text-primary);
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all var(--transition-fast);
+    }
+    .theme-toggle:hover {
+      background: var(--glass-border);
+      transform: scale(1.05);
+    }
+    
+    /* --- Main Workspace --- */
+    .container {
+      max-width: 1560px;
+      margin: 0 auto;
+      padding: 32px 24px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 28px;
+    }
+    
+    @media (max-width: 1150px) {
+      .container {
+        grid-template-columns: 1fr;
+      }
+    }
+    
+    .panel {
+      background: var(--glass-bg);
+      backdrop-filter: blur(16px);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-md);
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+      position: relative;
+    }
+    
+    .panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--glass-border);
+    }
+    
+    .panel-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 18px;
+      font-weight: 600;
+    }
+    
+    .panel-title svg {
+      width: 20px;
+      height: 20px;
+      color: var(--accent-blue);
+    }
+    
+    /* --- Left Panel Code Editor Style --- */
+    .editor-toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    
+    .templates-bar {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+    }
+    
+    .template-btn {
+      background: var(--bg-tertiary);
+      border: 1px solid var(--glass-border);
+      color: var(--text-secondary);
+      padding: 6px 12px;
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all var(--transition-fast);
+    }
+    .template-btn:hover {
+      background: var(--glass-border);
+      color: var(--text-primary);
+    }
+    .template-btn.active {
+      background: var(--accent-blue);
+      color: white;
+      border-color: var(--accent-blue);
+    }
+    
+    .select-lang {
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
+      border: 1px solid var(--glass-border);
+      padding: 6px 12px;
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      outline: none;
+      cursor: pointer;
+    }
+    
+    .filename-input {
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
+      border: 1px solid var(--glass-border);
+      padding: 6px 12px;
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      outline: none;
+      width: 140px;
+    }
+    
+    .code-container {
+      position: relative;
+      flex: 1;
+      min-height: 480px;
+      border-radius: var(--radius-sm);
+      overflow: hidden;
+      border: 1px solid var(--glass-border);
+    }
+    
+    .editor-textarea {
+      width: 100%;
+      height: 480px;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      font-family: var(--font-mono);
+      font-size: 14px;
+      line-height: 1.6;
+      padding: 16px;
+      border: none;
+      resize: none;
+      outline: none;
+      tab-size: 4;
+      white-space: pre;
+    }
+    
+    .btn-review {
+      background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+      color: white;
+      border: none;
+      border-radius: var(--radius-sm);
+      padding: 14px 28px;
+      font-family: var(--font-sans);
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      margin-top: 16px;
+      box-shadow: 0 4px 20px var(--glow-blue);
+      transition: all var(--transition-fast);
+    }
+    
+    .btn-review:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 24px var(--glow-purple);
+    }
+    
+    .btn-review:active:not(:disabled) {
+      transform: translateY(0);
+    }
+    
+    .btn-review:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+    
+    /* --- Right Panel: Results & Simulation --- */
+    .placeholder-state {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-tertiary);
+      text-align: center;
+      min-height: 500px;
+      padding: 40px;
+    }
+    
+    .placeholder-state svg {
+      width: 80px;
+      height: 80px;
+      margin-bottom: 20px;
+      opacity: 0.25;
+      stroke-width: 1.5;
+    }
+    
+    .placeholder-state h3 {
+      font-size: 20px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      margin-bottom: 8px;
+    }
+    
+    .placeholder-state p {
+      max-width: 320px;
+      font-size: 14px;
+    }
+    
+    /* --- Simulation Flow Animation --- */
+    .simulation-stage {
+      display: none;
+      flex-direction: column;
+      gap: 16px;
+      padding: 12px 0;
+      min-height: 500px;
+    }
+    
+    .sim-card {
+      background: var(--bg-tertiary);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-sm);
+      padding: 16px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      position: relative;
+      overflow: hidden;
+      transition: all var(--transition-fast);
+    }
+    
+    .sim-card.active {
+      border-color: var(--accent-blue);
+      box-shadow: 0 0 15px var(--glow-blue);
+      background: rgba(59, 130, 246, 0.05);
+    }
+    
+    .sim-card.done {
+      border-color: var(--accent-emerald);
+      background: rgba(16, 185, 129, 0.02);
+    }
+    
+    .sim-icon-container {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: var(--bg-primary);
+      border: 2px solid var(--glass-border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+    
+    .sim-card.active .sim-icon-container {
+      border-color: var(--accent-blue);
+      animation: pulse-ring 1.5s infinite;
+    }
+    
+    .sim-card.done .sim-icon-container {
+      border-color: var(--accent-emerald);
+      background: var(--accent-emerald);
+      color: white;
+    }
+    
+    .sim-details {
+      flex: 1;
+    }
+    
+    .sim-name {
+      font-weight: 600;
+      font-size: 15px;
+      color: var(--text-primary);
+    }
+    
+    .sim-status {
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin-top: 2px;
+    }
+    
+    .sim-bar {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      height: 3px;
+      width: 0;
+      background: linear-gradient(to right, var(--accent-blue), var(--accent-purple));
+    }
+    
+    .sim-card.active .sim-bar {
+      animation: load-bar 4s forwards linear;
+    }
+    .sim-card.done .sim-bar {
+      width: 100%;
+      background: var(--accent-emerald);
+    }
+    
+    @keyframes pulse-ring {
+      0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4); }
+      70% { box-shadow: 0 0 0 10px rgba(59, 130, 246, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
+    }
+    @keyframes load-bar {
+      0% { width: 0%; }
+      100% { width: 100%; }
+    }
+    
+    /* --- Main Dashboard Results --- */
+    .dashboard-results {
+      display: none;
+      flex-direction: column;
+      gap: 20px;
+    }
+    
+    /* Dashboard summary section */
+    .score-summary-grid {
+      display: grid;
+      grid-template-columns: 140px 1fr;
+      gap: 24px;
+      align-items: center;
+      background: var(--bg-tertiary);
+      padding: 20px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--glass-border);
+    }
+    
+    .radial-gauge {
+      width: 130px;
+      height: 130px;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .radial-svg {
+      width: 130px;
+      height: 130px;
+      transform: rotate(-90deg);
+    }
+    
+    .radial-circle-bg {
+      fill: none;
+      stroke: var(--bg-primary);
+      stroke-width: 10;
+    }
+    
+    .radial-circle-val {
+      fill: none;
+      stroke: var(--accent-blue);
+      stroke-width: 10;
+      stroke-linecap: round;
+      stroke-dasharray: 314;
+      stroke-dashoffset: 314;
+      transition: stroke-dashoffset 1.5s ease-out;
+    }
+    
+    .radial-info {
+      position: absolute;
+      text-align: center;
+    }
+    
+    .radial-score {
+      font-size: 32px;
+      font-weight: 700;
+      line-height: 1;
+      color: var(--text-primary);
+    }
+    
+    .radial-grade {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--accent-blue);
+      margin-top: 2px;
+      letter-spacing: 0.5px;
+    }
+    
+    .summary-text-container {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    
+    .summary-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .summary-grade-badge {
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      background: rgba(59, 130, 246, 0.12);
+      color: var(--accent-blue);
+      border: 1px solid var(--glow-blue);
+    }
+    
+    .summary-title {
+      font-size: 17px;
+      font-weight: 600;
+    }
+    
+    .summary-desc {
+      font-size: 14px;
+      color: var(--text-secondary);
+    }
+    
+    /* Metrics display */
+    .metrics-container {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+    
+    .metric-card {
+      background: var(--glass-highlight);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-sm);
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    
+    .metric-label {
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--text-tertiary);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    
+    .metric-val {
+      font-size: 16px;
+      font-weight: 600;
+    }
+    
+    /* Tabs Control */
+    .tabs-list {
+      display: flex;
+      border-bottom: 1px solid var(--glass-border);
+      gap: 8px;
+    }
+    
+    .tab-trigger {
+      background: none;
+      border: none;
+      color: var(--text-secondary);
+      padding: 10px 16px;
+      cursor: pointer;
+      font-family: var(--font-sans);
+      font-size: 14px;
+      font-weight: 500;
+      position: relative;
+      transition: all var(--transition-fast);
+    }
+    
+    .tab-trigger:hover {
+      color: var(--text-primary);
+    }
+    
+    .tab-trigger.active {
+      color: var(--accent-blue);
+    }
+    
+    .tab-trigger.active::after {
+      content: '';
+      position: absolute;
+      bottom: -1px;
+      left: 0;
+      width: 100%;
+      height: 2px;
+      background-color: var(--accent-blue);
+    }
+    
+    /* Tabs Content */
+    .tab-content {
+      display: none;
+      flex-direction: column;
+      gap: 16px;
+      max-height: 420px;
+      overflow-y: auto;
+      padding: 8px 4px;
+    }
+    
+    .tab-content::-webkit-scrollbar {
+      width: 6px;
+    }
+    .tab-content::-webkit-scrollbar-thumb {
+      background: var(--glass-border);
+      border-radius: 3px;
+    }
+    
+    .tab-content.active {
+      display: flex;
+    }
+    
+    /* Finding List Element */
+    .finding-item {
+      background: var(--bg-tertiary);
+      border: 1px solid var(--glass-border);
+      border-left: 4px solid var(--accent-blue);
+      border-radius: var(--radius-sm);
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      cursor: pointer;
+      transition: all var(--transition-fast);
+    }
+    .finding-item:hover {
+      transform: translateX(3px);
+      background: var(--glass-border);
+    }
+    
+    .finding-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+    }
+    
+    .finding-title {
+      font-weight: 600;
+      font-size: 14px;
+    }
+    
+    .finding-meta {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .badge {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 12px;
+      text-transform: uppercase;
+    }
+    .badge-high {
+      background: rgba(244, 63, 94, 0.12);
+      color: var(--accent-rose);
+      border: 1px solid var(--glow-rose);
+    }
+    .badge-medium {
+      background: rgba(245, 158, 11, 0.12);
+      color: var(--accent-amber);
+      border: 1px solid rgba(245, 158, 11, 0.2);
+    }
+    .badge-low {
+      background: rgba(59, 130, 246, 0.12);
+      color: var(--accent-blue);
+      border: 1px solid var(--glow-blue);
+    }
+    
+    .finding-line {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-tertiary);
+      background: var(--bg-primary);
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+    
+    .finding-msg {
+      font-size: 13.5px;
+      color: var(--text-secondary);
+    }
+    
+    .finding-fix {
+      background: rgba(16, 185, 129, 0.05);
+      border: 1px dashed rgba(16, 185, 129, 0.2);
+      border-radius: 4px;
+      padding: 10px;
+      font-size: 13px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    
+    .finding-fix strong {
+      color: var(--accent-emerald);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    
+    .finding-fix span {
+      color: var(--text-primary);
+      font-family: var(--font-sans);
+    }
+    
+    /* Recommendation Strength Bullets */
+    .strength-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      font-size: 14px;
+      background: rgba(16, 185, 129, 0.03);
+      padding: 10px 14px;
+      border-radius: var(--radius-sm);
+      border: 1px solid rgba(16, 185, 129, 0.1);
+    }
+    
+    .strength-item svg {
+      width: 18px;
+      height: 18px;
+      color: var(--accent-emerald);
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+    
+    .rec-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      font-size: 14px;
+      background: rgba(245, 158, 11, 0.03);
+      padding: 10px 14px;
+      border-radius: var(--radius-sm);
+      border: 1px solid rgba(245, 158, 11, 0.1);
+    }
+    
+    .rec-item svg {
+      width: 18px;
+      height: 18px;
+      color: var(--accent-amber);
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+    
+    /* History List */
+    .history-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .history-card {
+      background: var(--bg-tertiary);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-sm);
+      padding: 12px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+      transition: all var(--transition-fast);
+    }
+    .history-card:hover {
+      border-color: var(--accent-blue);
+      background: var(--glass-highlight);
+    }
+    .hist-main {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .hist-title {
+      font-weight: 600;
+      font-size: 14px;
+    }
+    .hist-time {
+      font-size: 11.5px;
+      color: var(--text-tertiary);
+    }
+    .hist-stats {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .hist-score-badge {
+      background: var(--bg-primary);
+      border: 1px solid var(--glass-border);
+      border-radius: 4px;
+      padding: 4px 8px;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--accent-blue);
+    }
+    .btn-delete-hist {
+      background: none;
+      border: none;
+      color: var(--text-tertiary);
+      cursor: pointer;
+      padding: 6px;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all var(--transition-fast);
+    }
+    .btn-delete-hist:hover {
+      background: rgba(244, 63, 94, 0.1);
+      color: var(--accent-rose);
+    }
+    
+    /* Code Viewer Line-By-Line Highlighting */
+    .interactive-code-container {
+      display: none;
+      margin-top: 20px;
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-sm);
+      overflow: hidden;
+      background: var(--bg-primary);
+    }
+    .interactive-code-header {
+      padding: 8px 16px;
+      background: var(--bg-tertiary);
+      border-bottom: 1px solid var(--glass-border);
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .interactive-code-lines {
+      max-height: 400px;
+      overflow-y: auto;
+      font-family: var(--font-mono);
+      font-size: 13.5px;
+      line-height: 1.6;
+      counter-reset: line;
+      padding: 12px 0;
+    }
+    .code-line {
+      display: block;
+      padding: 0 16px;
+      border-left: 3px solid transparent;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+    .code-line:before {
+      counter-increment: line;
+      content: counter(line);
+      display: inline-block;
+      width: 32px;
+      text-align: right;
+      margin-right: 16px;
+      color: var(--text-tertiary);
+      user-select: none;
+    }
+    .code-line.highlight-high {
+      background: rgba(244, 63, 94, 0.08);
+      border-left-color: var(--accent-rose);
+    }
+    .code-line.highlight-medium {
+      background: rgba(245, 158, 11, 0.08);
+      border-left-color: var(--accent-amber);
+    }
+    .code-line.highlight-low {
+      background: rgba(59, 130, 246, 0.08);
+      border-left-color: var(--accent-blue);
+    }
+    .code-line.highlight-high:hover, 
+    .code-line.highlight-medium:hover,
+    .code-line.highlight-low:hover {
+      background: rgba(255, 255, 255, 0.05);
+      cursor: help;
+    }
+    
+    /* Code finding tooltip */
+    .line-tooltip {
+      margin: 4px 16px 8px 48px;
+      padding: 10px 14px;
+      border-radius: var(--radius-sm);
+      font-size: 12.5px;
+      font-family: var(--font-sans);
+    }
+    .line-tooltip-high {
+      background: rgba(244, 63, 94, 0.1);
+      border: 1px solid rgba(244, 63, 94, 0.2);
+      color: var(--text-primary);
+    }
+    .line-tooltip-medium {
+      background: rgba(245, 158, 11, 0.1);
+      border: 1px solid rgba(245, 158, 11, 0.2);
+      color: var(--text-primary);
+    }
+    .line-tooltip-low {
+      background: rgba(59, 130, 246, 0.1);
+      border: 1px solid rgba(59, 130, 246, 0.2);
+      color: var(--text-primary);
+    }
+    
+    .source-label {
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--text-tertiary);
+      margin-top: 4px;
+      display: inline-block;
+    }
+
+    /* --- Gemini API Badge --- */
+    .api-badge {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(16, 185, 129, 0.08);
+      border: 1px solid rgba(16, 185, 129, 0.25);
+      border-radius: 20px;
+      padding: 6px 14px 6px 10px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--accent-emerald);
+      letter-spacing: 0.2px;
+      transition: all var(--transition-fast);
+      cursor: default;
+      user-select: none;
+    }
+    .api-badge:hover {
+      background: rgba(16, 185, 129, 0.14);
+      border-color: rgba(16, 185, 129, 0.4);
+      box-shadow: 0 0 14px rgba(16, 185, 129, 0.15);
+    }
+    .api-badge-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent-emerald);
+      flex-shrink: 0;
+      animation: api-pulse 2s infinite;
+    }
+    .api-badge-icon {
+      display: flex;
+      align-items: center;
+      opacity: 0.85;
+    }
+    @keyframes api-pulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.5); opacity: 1; }
+      50% { box-shadow: 0 0 0 5px rgba(16, 185, 129, 0); opacity: 0.7; }
+    }
+
+    /* --- History Icon Button --- */
+    .history-btn {
+      background: var(--bg-tertiary);
+      border: 1px solid var(--glass-border);
+      color: var(--text-secondary);
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all var(--transition-fast);
+      position: relative;
+    }
+    .history-btn:hover {
+      background: rgba(139, 92, 246, 0.12);
+      border-color: rgba(139, 92, 246, 0.35);
+      color: var(--accent-purple);
+      box-shadow: 0 0 12px rgba(139, 92, 246, 0.2);
+      transform: scale(1.05);
+    }
+    .history-btn-badge {
+      position: absolute;
+      top: -4px;
+      right: -4px;
+      background: var(--accent-purple);
+      color: white;
+      font-size: 10px;
+      font-weight: 700;
+      min-width: 18px;
+      height: 18px;
+      border-radius: 9px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 4px;
+      border: 2px solid var(--bg-primary);
+      display: none;
+    }
+
+    /* --- History Drawer Overlay --- */
+    .history-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.55);
+      backdrop-filter: blur(4px);
+      z-index: 200;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity var(--transition-normal);
+    }
+    .history-overlay.open {
+      opacity: 1;
+      pointer-events: all;
+    }
+
+    /* --- History Drawer Panel --- */
+    .history-drawer {
+      position: fixed;
+      top: 0;
+      right: 0;
+      height: 100vh;
+      width: 420px;
+      max-width: 95vw;
+      background: var(--bg-secondary);
+      border-left: 1px solid var(--glass-border);
+      z-index: 201;
+      display: flex;
+      flex-direction: column;
+      transform: translateX(100%);
+      transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: -8px 0 40px rgba(0,0,0,0.35);
+    }
+    .history-drawer.open {
+      transform: translateX(0);
+    }
+    .drawer-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--glass-border);
+      background: var(--glass-bg);
+      backdrop-filter: blur(12px);
+      flex-shrink: 0;
+    }
+    .drawer-header-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .drawer-icon {
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, var(--accent-purple), var(--accent-blue));
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      box-shadow: 0 4px 12px var(--glow-purple);
+    }
+    .drawer-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+    .drawer-subtitle {
+      font-size: 12px;
+      color: var(--text-tertiary);
+      margin-top: 1px;
+    }
+    .drawer-close {
+      background: var(--bg-tertiary);
+      border: 1px solid var(--glass-border);
+      color: var(--text-secondary);
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all var(--transition-fast);
+    }
+    .drawer-close:hover {
+      background: rgba(244, 63, 94, 0.1);
+      color: var(--accent-rose);
+      border-color: rgba(244, 63, 94, 0.2);
+    }
+    .drawer-search {
+      padding: 16px 24px 12px;
+      border-bottom: 1px solid var(--glass-border);
+      flex-shrink: 0;
+    }
+    .drawer-search-input {
+      width: 100%;
+      background: var(--bg-tertiary);
+      border: 1px solid var(--glass-border);
+      color: var(--text-primary);
+      padding: 9px 14px 9px 38px;
+      border-radius: var(--radius-sm);
+      font-size: 13.5px;
+      outline: none;
+      transition: border-color var(--transition-fast);
+      font-family: var(--font-sans);
+    }
+    .drawer-search-input:focus {
+      border-color: var(--accent-purple);
+    }
+    .drawer-search-wrap {
+      position: relative;
+    }
+    .drawer-search-icon {
+      position: absolute;
+      left: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-tertiary);
+      pointer-events: none;
+    }
+    .drawer-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px 24px;
+    }
+    .drawer-body::-webkit-scrollbar { width: 5px; }
+    .drawer-body::-webkit-scrollbar-thumb { background: var(--glass-border); border-radius: 3px; }
+    .drawer-empty {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      min-height: 300px;
+      color: var(--text-tertiary);
+      text-align: center;
+      gap: 12px;
+    }
+    .drawer-empty svg { opacity: 0.2; }
+    .drawer-empty p { font-size: 14px; }
+    .drawer-hist-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .drawer-hist-card {
+      background: var(--bg-tertiary);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-sm);
+      padding: 14px 16px;
+      cursor: pointer;
+      transition: all var(--transition-fast);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      position: relative;
+      overflow: hidden;
+    }
+    .drawer-hist-card::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 3px;
+      background: linear-gradient(to bottom, var(--accent-blue), var(--accent-purple));
+      opacity: 0;
+      transition: opacity var(--transition-fast);
+    }
+    .drawer-hist-card:hover {
+      border-color: rgba(139, 92, 246, 0.3);
+      background: rgba(139, 92, 246, 0.04);
+      transform: translateX(3px);
+    }
+    .drawer-hist-card:hover::before { opacity: 1; }
+    .dhc-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+    .dhc-filename {
+      font-weight: 600;
+      font-size: 14px;
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .dhc-filename svg { color: var(--accent-blue); }
+    .dhc-score {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--accent-blue);
+      line-height: 1;
+    }
+    .dhc-grade {
+      font-size: 11px;
+      color: var(--text-tertiary);
+      text-align: right;
+      margin-top: 2px;
+    }
+    .dhc-bottom {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .dhc-time {
+      font-size: 11.5px;
+      color: var(--text-tertiary);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .dhc-chips {
+      display: flex;
+      gap: 6px;
+    }
+    .dhc-chip {
+      font-size: 11px;
+      padding: 2px 7px;
+      border-radius: 10px;
+      font-weight: 500;
+    }
+    .dhc-chip-bug { background: rgba(244,63,94,0.1); color: var(--accent-rose); }
+    .dhc-chip-sec { background: rgba(245,158,11,0.1); color: var(--accent-amber); }
+    .dhc-del {
+      background: none;
+      border: none;
+      color: var(--text-tertiary);
+      cursor: pointer;
+      padding: 4px;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      transition: all var(--transition-fast);
+      flex-shrink: 0;
+    }
+    .dhc-del:hover { background: rgba(244,63,94,0.1); color: var(--accent-rose); }
+    .drawer-footer {
+      padding: 14px 24px;
+      border-top: 1px solid var(--glass-border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 12px;
+      color: var(--text-tertiary);
+      flex-shrink: 0;
+      background: var(--glass-bg);
+    }
+    .drawer-footer-count {
+      font-weight: 600;
+      color: var(--accent-purple);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="blob blob-1"></div>
+  <div class="blob blob-2"></div>
+
+  <header>
+    <div class="logo-container">
+      <div class="logo-icon">▲</div>
+      <div class="logo-title">
+                <h1>CodeSentinel AI</h1>
+      </div>
+    </div>
+    
+    <div class="header-actions">
+      <!-- Gemini API Badge -->
+      <div class="api-badge" title="Powered by Google Gemini 2.5 Flash">
+        <span class="api-badge-dot"></span>
+        <span class="api-badge-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+            <path d="M2 17l10 5 10-5"/>
+            <path d="M2 12l10 5 10-5"/>
+          </svg>
+        </span>
+        API&thinsp;:&thinsp;Gemini
+      </div>
+
+      <!-- History Button -->
+      <button class="history-btn" id="historyBtn" aria-label="View History" title="Review History">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width:19px;height:19px;">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <span class="history-btn-badge" id="historyBadge"></span>
+      </button>
+
+      <!-- Theme Toggle -->
+      <button class="theme-toggle" id="themeBtn" aria-label="Toggle Theme">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width:20px;height:20px;">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- History Overlay -->
+  <div class="history-overlay" id="historyOverlay"></div>
+
+  <!-- History Drawer -->
+  <aside class="history-drawer" id="historyDrawer" role="complementary" aria-label="Review History">
+    <div class="drawer-header">
+      <div class="drawer-header-left">
+        <div class="drawer-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width:18px;height:18px;">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </div>
+        <div>
+          <div class="drawer-title">Review History</div>
+          <div class="drawer-subtitle">All past code reviews</div>
+        </div>
+      </div>
+      <button class="drawer-close" id="drawerClose" aria-label="Close">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width:16px;height:16px;">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+
+    <div class="drawer-search">
+      <div class="drawer-search-wrap">
+        <svg class="drawer-search-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width:16px;height:16px;">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+        </svg>
+        <input class="drawer-search-input" id="drawerSearch" type="text" placeholder="Search by filename..." />
+      </div>
+    </div>
+
+    <div class="drawer-body" id="drawerBody">
+      <div class="drawer-empty" id="drawerEmpty">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width:56px;height:56px;">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <p>No reviews yet.<br>Submit code to get started.</p>
+      </div>
+      <div class="drawer-hist-list" id="drawerHistList"></div>
+    </div>
+
+    <div class="drawer-footer">
+      <span>Total reviews: <span class="drawer-footer-count" id="drawerCount">0</span></span>
+      <span style="color:var(--accent-emerald);font-weight:500;font-size:11px;">● Gemini 2.5 Flash</span>
+    </div>
+  </aside>
+
+  <main class="container">
+    
+    <!-- Left Panel: Input -->
+    <section class="panel">
+      <div class="panel-header">
+        <div class="panel-title">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+          </svg>
+          Source Code Input
+        </div>
+      </div>
+      
+      <div class="editor-toolbar">
+        <div class="templates-bar" id="templatesBar">
+          <button class="template-btn active" data-template="clean">Safe & Clean</button>
+          <button class="template-btn" data-template="bugs">Execution Bugs</button>
+          <button class="template-btn" data-template="quality">PEP 8 / Quality</button>
+          <button class="template-btn" data-template="security">Vulnerabilities</button>
+        </div>
+        
+        <div style="display:flex; gap:8px;">
+          <input type="text" class="filename-input" id="filenameInput" value="analytics.py" placeholder="Filename">
+          <select class="select-lang" id="langSelect">
+            <option value="python">Python</option>
+          </select>
+        </div>
+      </div>
+      
+      <div class="code-container">
+        <textarea class="editor-textarea" id="editor" spellcheck="false"></textarea>
+      </div>
+      
+      <button class="btn-review" id="reviewBtn">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width:20px;height:20px;">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+        </svg>
+        <span>Initialize Multi-Agent Review</span>
+      </button>
+    </section>
+    
+    <!-- Right Panel: Results -->
+    <section class="panel">
+      <div class="panel-header">
+        <div class="panel-title">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+          </svg>
+          Analysis Console
+        </div>
+      </div>
+      
+      <!-- Placeholder State -->
+      <div class="placeholder-state" id="placeholderState">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+        </svg>
+        <h3>Ready for Analysis</h3>
+        <p>Load a template script or input custom code, then click the start button to run the multi-agent orchestration pipeline.</p>
+      </div>
+      
+      <!-- Simulation Stages -->
+      <div class="simulation-stage" id="simulationStage">
+        <div class="sim-card" id="simCardSupervisor">
+          <div class="sim-icon-container">⚙️</div>
+          <div class="sim-details">
+            <div class="sim-name">Supervisor Agent</div>
+            <div class="sim-status">Queued to coordinate pipeline execution...</div>
+          </div>
+          <div class="sim-bar"></div>
+        </div>
+        
+        <div class="sim-card" id="simCardBugs">
+          <div class="sim-icon-container">🐛</div>
+          <div class="sim-details">
+            <div class="sim-name">Bug Detector Agent</div>
+            <div class="sim-status">Waiting to parse syntax and structural loops...</div>
+          </div>
+          <div class="sim-bar"></div>
+        </div>
+        
+        <div class="sim-card" id="simCardQuality">
+          <div class="sim-icon-container">✨</div>
+          <div class="sim-details">
+            <div class="sim-name">Code Quality Agent</div>
+            <div class="sim-status">Waiting to inspect PEP-8 styles and indentation depth...</div>
+          </div>
+          <div class="sim-bar"></div>
+        </div>
+        
+        <div class="sim-card" id="simCardSecurity">
+          <div class="sim-icon-container">🔒</div>
+          <div class="sim-details">
+            <div class="sim-name">Security Auditor Agent</div>
+            <div class="sim-status">Waiting to scan for secrets, SQLi, and execution flows...</div>
+          </div>
+          <div class="sim-bar"></div>
+        </div>
+        
+        <div class="sim-card" id="simCardScoring">
+          <div class="sim-icon-container">📊</div>
+          <div class="sim-details">
+            <div class="sim-name">Scoring Orchestrator Agent</div>
+            <div class="sim-status">Waiting for aggregate reviews to compute score card...</div>
+          </div>
+          <div class="sim-bar"></div>
+        </div>
+      </div>
+      
+      <!-- Dashboard Results -->
+      <div class="dashboard-results" id="dashboardResults">
+        <div class="score-summary-grid">
+          <div class="radial-gauge">
+            <svg class="radial-svg">
+              <circle class="radial-circle-bg" cx="65" cy="65" r="50"></circle>
+              <circle class="radial-circle-val" id="radialCircle" cx="65" cy="65" r="50"></circle>
+            </svg>
+            <div class="radial-info">
+              <div class="radial-score" id="scoreValue">0</div>
+              <div class="radial-grade" id="gradeValue">-</div>
+            </div>
+          </div>
+          <div class="summary-text-container">
+            <div class="summary-header">
+              <div class="summary-title" id="summaryTitle">Analysis Completed</div>
+              <span class="summary-grade-badge" id="summaryGradeBadge">Grade B</span>
+            </div>
+            <div class="summary-desc" id="summaryText">
+              Your overall code was evaluated. Details are broken down below.
+            </div>
+            <div>
+              <span class="source-label" id="reviewSource">Source: Local Heuristics</span>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Metrics -->
+        <div class="metrics-container">
+          <div class="metric-card" style="border-left: 3px solid var(--accent-rose);">
+            <span class="metric-label">Execution Bugs</span>
+            <span class="metric-val" id="metricBugs">0 Detected</span>
+          </div>
+          <div class="metric-card" style="border-left: 3px solid var(--accent-blue);">
+            <span class="metric-label">Quality Score</span>
+            <span class="metric-val" id="metricQuality">0 / 10</span>
+          </div>
+          <div class="metric-card" style="border-left: 3px solid var(--accent-amber);">
+            <span class="metric-label">Security Alerts</span>
+            <span class="metric-val" id="metricSecurity">0 Alerts</span>
+          </div>
+        </div>
+        
+        <!-- Tabs -->
+        <div class="tabs-list">
+          <button class="tab-trigger active" data-tab="tabOverview">Dashboard</button>
+          <button class="tab-trigger" data-tab="tabBugs">Bugs</button>
+          <button class="tab-trigger" data-tab="tabQuality">Style & Quality</button>
+          <button class="tab-trigger" data-tab="tabSecurity">Security</button>
+          <button class="tab-trigger" data-tab="tabHistory">History</button>
+        </div>
+        
+        <!-- Tab: Overview -->
+        <div class="tab-content active" id="tabOverview">
+          <h4 style="font-size:14px; font-weight:600; text-transform:uppercase; color:var(--text-secondary); margin-bottom:8px;">Observed Code Strengths</h4>
+          <div id="strengthsList" style="display:flex; flex-direction:column; gap:8px;">
+            <!-- filled by JS -->
+          </div>
+          
+          <h4 style="font-size:14px; font-weight:600; text-transform:uppercase; color:var(--text-secondary); margin-top:16px; margin-bottom:8px;">Core Recommendations</h4>
+          <div id="recsList" style="display:flex; flex-direction:column; gap:8px;">
+            <!-- filled by JS -->
+          </div>
+        </div>
+        
+        <!-- Tab: Bugs -->
+        <div class="tab-content" id="tabBugs">
+          <div id="bugsList" style="display:flex; flex-direction:column; gap:10px;">
+            <!-- filled by JS -->
+          </div>
+        </div>
+        
+        <!-- Tab: Quality -->
+        <div class="tab-content" id="tabQuality">
+          <div id="qualityList" style="display:flex; flex-direction:column; gap:10px;">
+            <!-- filled by JS -->
+          </div>
+        </div>
+        
+        <!-- Tab: Security -->
+        <div class="tab-content" id="tabSecurity">
+          <div id="securityList" style="display:flex; flex-direction:column; gap:10px;">
+            <!-- filled by JS -->
+          </div>
+        </div>
+        
+        <!-- Tab: History -->
+        <div class="tab-content" id="tabHistory">
+          <div class="history-list" id="historyList">
+            <!-- filled by JS -->
+          </div>
+        </div>
+        
+        <!-- Interactive Code Viewer (Only visible when review exists) -->
+        <div class="interactive-code-container" id="interactiveCodeContainer">
+          <div class="interactive-code-header">
+            <span id="codeHeaderFilename">analytics.py</span>
+            <span style="color:var(--text-tertiary); font-size:11px;">Click highlighted line for findings</span>
+          </div>
+          <div class="interactive-code-lines" id="interactiveCodeLines">
+            <!-- Rendered by JS -->
+          </div>
+        </div>
+        
+      </div>
+    </section>
+    
+  </main>
+
+  <script>
+    // --- Preloaded Mock Templates (For Demonstration) ---
+    const templates = {
+      clean: `# Safe and Clean Analytics helper
+import os
+import hashlib
+from typing import Dict, Any, List
+
+def compute_user_hash(user_id: str) -> str:
+    \"\"\"Computes a SHA-256 hash representation of the user ID for anonymity.
+    
+    Args:
+        user_id: The raw string of user ID.
+    Returns:
+        The hex digest of the SHA-256 hash.
+    \"\"\"
+    salt = os.environ.get("HASH_SALT", "default_secure_salt_value")
+    payload = f"{user_id}:{salt}"
+    return hashlib.sha256(payload.encode('utf-8')).hexdigest()
+
+def check_access_log(logs: List[Dict[str, Any]], target_user: str) -> bool:
+    \"\"\"Checks access permissions for target user in logs safely.
+    \"\"\"
+    user_hash = compute_user_hash(target_user)
+    for entry in logs:
+        if entry.get("hash") == user_hash:
+            return True
+    return False
+`,
+      bugs: `# Script with execution bugs and exceptions
+def divide_users(total_score, active_users):
+    # Bug: Division by zero if active_users is 0
+    return total_score / active_users
+
+# Compilation or syntax issue below (unclosed bracket)
+def print_report(data):
+    print("Report items count: " + str(len(data))
+    
+def get_user_records(user_map=[]):
+    # Bug: Mutable default argument!
+    user_map.append("user_1")
+    return user_map
+
+divide_users(100, 0)
+`,
+      quality: `# Poor quality, bad PEP-8 style formatting, nested conditionals
+class user_account:
+    def __init__(self, NAME, mail):
+        self.NAME=NAME
+        self.mail=mail
+
+    def CheckEmailAddress(self):
+        # Naming convention camelCase mixes with snake_case
+        if self.mail:
+            if "@" in self.mail:
+                if "." in self.mail:
+                    # Too deep nesting / cognitive complexity
+                    return True
+        return False
+
+def Very_Long_Function_Name_That_Violates_Formatting_Standards_And_Lines_Exceeding_Character_Limits_To_Check_Length(x, y, z):
+    # PEP-8 line limit check
+    result = x + y + z + 100 + 200 + 300 + 400 + 500 + 600 + 700 + 800 + 900 + 1000 + 1100 + 1200 + 1300 + 1400 + 1500
+    return result
+`,
+      security: `# Vulnerable analytics handler
+import os
+import hashlib
+import sqlite3
+import subprocess
+
+def process_query_insecure(user_input):
+    conn = sqlite3.connect("users.db")
+    cursor = conn.cursor()
+    # SECURITY: SQL injection vulnerability (string formatting)
+    cursor.execute("SELECT * FROM users WHERE username = '%s'" % user_input)
+    return cursor.fetchall()
+
+def execute_diagnostics(ip_address):
+    # SECURITY: Command injection via shell=True
+    cmd = f"ping -c 3 {ip_address}"
+    subprocess.run(cmd, shell=True)
+
+def hash_session_id(session_id):
+    # SECURITY: Weak cryptographic algorithm MD5
+    m = hashlib.md5()
+    m.update(session_id.encode('utf-8'))
+    return m.hexdigest()
+
+def connect_to_aws():
+    # SECURITY: Hardcoded sensitive AWS Key
+    aws_secret_key = "AKIAIOSFODNN7EXAMPLE_SECRET_KEY"
+    return aws_secret_key
+`
+    };
+
+    // --- State & DOM cache ---
+    let currentTheme = 'dark';
+    let currentReview = null;
+    
+    const themeBtn = document.getElementById('themeBtn');
+    const editor = document.getElementById('editor');
+    const filenameInput = document.getElementById('filenameInput');
+    const reviewBtn = document.getElementById('reviewBtn');
+    const templatesBar = document.getElementById('templatesBar');
+    
+    // Result panels
+    const placeholderState = document.getElementById('placeholderState');
+    const simulationStage = document.getElementById('simulationStage');
+    const dashboardResults = document.getElementById('dashboardResults');
+    
+    // Sim Cards
+    const simCardSupervisor = document.getElementById('simCardSupervisor');
+    const simCardBugs = document.getElementById('simCardBugs');
+    const simCardQuality = document.getElementById('simCardQuality');
+    const simCardSecurity = document.getElementById('simCardSecurity');
+    const simCardScoring = document.getElementById('simCardScoring');
+    
+    // Dashboard fields
+    const scoreValue = document.getElementById('scoreValue');
+    const gradeValue = document.getElementById('gradeValue');
+    const radialCircle = document.getElementById('radialCircle');
+    const summaryTitle = document.getElementById('summaryTitle');
+    const summaryGradeBadge = document.getElementById('summaryGradeBadge');
+    const summaryText = document.getElementById('summaryText');
+    const reviewSource = document.getElementById('reviewSource');
+    
+    // Metrics
+    const metricBugs = document.getElementById('metricBugs');
+    const metricQuality = document.getElementById('metricQuality');
+    const metricSecurity = document.getElementById('metricSecurity');
+    
+    // Code View
+    const interactiveCodeContainer = document.getElementById('interactiveCodeContainer');
+    const interactiveCodeLines = document.getElementById('interactiveCodeLines');
+    const codeHeaderFilename = document.getElementById('codeHeaderFilename');
+
+    // --- Theme Handlers ---
+    themeBtn.addEventListener('click', () => {
+      document.body.classList.toggle('light-theme');
+      currentTheme = document.body.classList.contains('light-theme') ? 'light' : 'dark';
+      themeBtn.innerHTML = currentTheme === 'light' 
+        ? `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width:20px;height:20px;">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 9H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m12.728 0l-.707-.707M6.343 6.343l-.707-.707M14 12a2 2 0 11-4 0 2 2 0 014 0z" />
+           </svg>`
+        : `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width:20px;height:20px;">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+           </svg>`;
+    });
+
+    // --- Tab Handlers ---
+    document.querySelectorAll('.tab-trigger').forEach(trigger => {
+      trigger.addEventListener('click', () => {
+        // Toggle Active trigger class
+        document.querySelectorAll('.tab-trigger').forEach(t => t.classList.remove('active'));
+        trigger.classList.add('active');
+        
+        // Toggle Active content view
+        const targetTab = trigger.getAttribute('data-tab');
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        document.getElementById(targetTab).classList.add('active');
+        
+        // If history tab, refresh history
+        if (targetTab === 'tabHistory') {
+          fetchHistory();
+        }
+      });
+    });
+
+    // --- Templates Loader ---
+    templatesBar.addEventListener('click', (e) => {
+      if (e.target.classList.contains('template-btn')) {
+        document.querySelectorAll('.template-btn').forEach(btn => btn.classList.remove('active'));
+        e.target.classList.add('active');
+        
+        const key = e.target.getAttribute('data-template');
+        editor.value = templates[key];
+        
+        // Set filename based on selection
+        if (key === 'clean') {
+          filenameInput.value = 'analytics.py';
+        } else if (key === 'bugs') {
+          filenameInput.value = 'divide_ops.py';
+        } else if (key === 'quality') {
+          filenameInput.value = 'account_check.py';
+        } else if (key === 'security') {
+          filenameInput.value = 'vulnerable_code.py';
+        }
+      }
+    });
+
+    // Load initial default code
+    editor.value = templates['clean'];
+
+    // --- Core Review Request Flow ---
+    reviewBtn.addEventListener('click', async () => {
+      const codeInput = editor.value;
+      const language = document.getElementById('langSelect').value;
+      const filename = filenameInput.value || 'main.py';
+      
+      if (!codeInput.trim()) {
+        alert("Please enter some source code to review.");
+        return;
+      }
+      
+      // 1. Enter Simulation mode
+      reviewBtn.disabled = true;
+      placeholderState.style.display = 'none';
+      dashboardResults.style.display = 'none';
+      simulationStage.style.display = 'flex';
+      
+      // Reset statuses
+      resetSimulations();
+      
+      // Start Animating Pipeline Cards
+      try {
+        // Agent 1: Supervisor orchestrating
+        setSimStatus('simCardSupervisor', 'active', 'Supervisor starting orchestrator thread...');
+        await delay(900);
+        setSimStatus('simCardSupervisor', 'done', 'Supervisor ready. Triggering specialized sub-agents...');
+        
+        // Agent 2, 3, 4: concurrent scanning
+        setSimStatus('simCardBugs', 'active', 'Scanning for division-by-zero, AST checks, loop variables...');
+        setSimStatus('simCardQuality', 'active', 'Checking naming schemes, PEP8 lines length, indents...');
+        setSimStatus('simCardSecurity', 'active', 'Checking shell injection, MD5 hashers, SQL commands...');
+        
+        // Fire API call concurrently
+        const apiPromise = fetch('/review', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ code: codeInput, language: language, filename: filename })
+        });
+        
+        await delay(1200);
+        setSimStatus('simCardBugs', 'done', 'Bug Detection completed.');
+        await delay(600);
+        setSimStatus('simCardQuality', 'done', 'PEP-8 formatting and styling audit complete.');
+        await delay(1000);
+        setSimStatus('simCardSecurity', 'done', 'Security audit complete. Code scanned against vulnerabilities.');
+        
+        // Agent 5: Scoring synthesis
+        setSimStatus('simCardScoring', 'active', 'Aggregating agent results & computing final score...');
+        
+        const response = await apiPromise;
+        if (!response.ok) {
+          throw new Error(`Server error: ${response.statusText}`);
+        }
+        
+        const reviewResult = await response.json();
+        await delay(800);
+        setSimStatus('simCardScoring', 'done', 'Scoring complete! Building dashboard review card.');
+        await delay(400);
+        
+        // Render results
+        renderReview(reviewResult);
+        
+      } catch (err) {
+        console.error(err);
+        alert(`Analysis failed: ${err.message || err}`);
+        placeholderState.style.display = 'flex';
+        simulationStage.style.display = 'none';
+      } finally {
+        reviewBtn.disabled = false;
+      }
+    });
+
+    // Helper functions
+    function delay(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
+    
+    function resetSimulations() {
+      const cards = ['simCardSupervisor', 'simCardBugs', 'simCardQuality', 'simCardSecurity', 'simCardScoring'];
+      cards.forEach(cardId => {
+        const card = document.getElementById(cardId);
+        card.className = 'sim-card';
+        const bar = card.querySelector('.sim-bar');
+        bar.style.width = '0';
+        
+        // Reset default text
+        if (cardId === 'simCardSupervisor') card.querySelector('.sim-status').innerText = 'Queued to coordinate pipeline execution...';
+        if (cardId === 'simCardBugs') card.querySelector('.sim-status').innerText = 'Waiting to parse syntax and structural loops...';
+        if (cardId === 'simCardQuality') card.querySelector('.sim-status').innerText = 'Waiting to inspect PEP-8 styles and indentation depth...';
+        if (cardId === 'simCardSecurity') card.querySelector('.sim-status').innerText = 'Waiting to scan for secrets, SQLi, and execution flows...';
+        if (cardId === 'simCardScoring') card.querySelector('.sim-status').innerText = 'Waiting for aggregate reviews to compute score card...';
+      });
+    }
+    
+    function setSimStatus(id, state, message) {
+      const card = document.getElementById(id);
+      card.className = `sim-card ${state}`;
+      if (message) {
+        card.querySelector('.sim-status').innerText = message;
+      }
+    }
+
+    // --- Render Dashboard and Report Tabs ---
+    function renderReview(review) {
+      currentReview = review;
+      
+      // Hide simulation, show results dashboard
+      simulationStage.style.display = 'none';
+      dashboardResults.style.display = 'flex';
+      
+      // 1. Radial Progress Animation
+      const score = review.scoring_report.score;
+      const grade = review.scoring_report.grade;
+      scoreValue.innerText = score;
+      gradeValue.innerText = grade;
+      summaryGradeBadge.innerText = `Grade ${grade}`;
+      
+      // Color transition based on score
+      let color = 'var(--accent-blue)';
+      if (score >= 85) color = 'var(--accent-emerald)';
+      else if (score >= 65) color = 'var(--accent-amber)';
+      else color = 'var(--accent-rose)';
+      
+      gradeValue.style.color = color;
+      radialCircle.style.stroke = color;
+      summaryGradeBadge.style.color = color;
+      summaryGradeBadge.style.borderColor = color;
+      summaryGradeBadge.style.background = `rgba(${score >= 85 ? '16, 185, 129' : score >= 65 ? '245, 158, 11' : '244, 63, 94'}, 0.12)`;
+      
+      // Animate stroke dashoffset (circumference is 2 * pi * 50 = 314)
+      const offset = 314 - (314 * score / 100);
+      radialCircle.style.strokeDashoffset = offset;
+      
+      // 2. Summary details
+      summaryTitle.innerText = `Platform score: ${score}/100`;
+      summaryText.innerText = review.scoring_report.summary;
+      
+      // Show API source if Gemini was used
+      const bugSource = review.bug_report.source || 'Local fallback';
+      reviewSource.innerText = `Engine: ${bugSource}`;
+      
+      // 3. Metrics Cards
+      const numBugs = review.bug_report.findings.length;
+      metricBugs.innerText = `${numBugs} issue${numBugs === 1 ? '' : 's'}`;
+      
+      const qScore = review.quality_report.score !== undefined ? review.quality_report.score : (review.quality_report.pass ? 9.0 : 6.0);
+      metricQuality.innerText = `${qScore} / 10`;
+      
+      const numSec = review.security_report.findings.length;
+      metricSecurity.innerText = `${numSec} alert${numSec === 1 ? '' : 's'}`;
+      
+      // 4. Fill Tab Contents
+      fillDashboardTab(review);
+      fillBugsTab(review.bug_report.findings);
+      fillQualityTab(review.quality_report.findings);
+      fillSecurityTab(review.security_report.findings);
+      
+      // 5. Code viewer
+      renderInteractiveCode(review.code, review.filename, [
+        ...review.bug_report.findings.map(f => ({ ...f, agent: 'bugs' })),
+        ...review.quality_report.findings.map(f => ({ ...f, agent: 'quality' })),
+        ...review.security_report.findings.map(f => ({ ...f, agent: 'security' }))
+      ]);
+      
+      // Reset active tab to Overview
+      document.querySelectorAll('.tab-trigger').forEach(t => t.classList.remove('active'));
+      document.querySelector('.tab-trigger[data-tab="tabOverview"]').classList.add('active');
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      document.getElementById('tabOverview').classList.add('active');
+    }
+    
+    function fillDashboardTab(review) {
+      const strengthsList = document.getElementById('strengthsList');
+      const recsList = document.getElementById('recsList');
+      
+      strengthsList.innerHTML = '';
+      recsList.innerHTML = '';
+      
+      const strengths = review.scoring_report.strengths || [];
+      const recs = review.scoring_report.recommendations || [];
+      
+      if (strengths.length === 0) {
+        strengthsList.innerHTML = '<div style="color:var(--text-tertiary);font-size:13px;">No specific strengths highlighted.</div>';
+      } else {
+        strengths.forEach(str => {
+          strengthsList.innerHTML += `
+            <div class="strength-item">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span>${escapeHtml(str)}</span>
+            </div>
+          `;
+        });
+      }
+      
+      if (recs.length === 0) {
+        recsList.innerHTML = '<div class="strength-item" style="background:rgba(16,185,129,0.03); border-color:rgba(16,185,129,0.1);"><span style="color:var(--accent-emerald);">🎉 Great job! The agents did not flag any urgent code quality or security actions.</span></div>';
+      } else {
+        recs.forEach(rec => {
+          recsList.innerHTML += `
+            <div class="rec-item">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <span>${escapeHtml(rec)}</span>
+            </div>
+          `;
+        });
+      }
+    }
+    
+    function fillBugsTab(findings) {
+      const list = document.getElementById('bugsList');
+      list.innerHTML = '';
+      
+      if (findings.length === 0) {
+        list.innerHTML = `
+          <div style="text-align:center; padding:30px; color:var(--text-tertiary);">
+            <div style="font-size:32px; margin-bottom:8px;">✅</div>
+            <div style="font-weight:600; color:var(--text-secondary);">No execution bugs detected.</div>
+            <div style="font-size:12.5px; margin-top:2px;">Your syntax tree and runtime safety checks look clean.</div>
+          </div>
+        `;
+        return;
+      }
+      
+      findings.forEach(f => {
+        const severity = f.severity || 'low';
+        const lineText = f.line_number ? `Line ${f.line_number}` : 'Global';
+        list.innerHTML += `
+          <div class="finding-item" style="border-left-color: ${getSeverityColor(severity)}" onclick="focusCodeLine(${f.line_number})">
+            <div class="finding-header">
+              <div class="finding-title">${escapeHtml(f.type || 'Bug Alert')}</div>
+              <div class="finding-meta">
+                <span class="finding-line">${lineText}</span>
+                <span class="badge badge-${severity}">${severity}</span>
+              </div>
+            </div>
+            <div class="finding-msg">${escapeHtml(f.message)}</div>
+            ${f.suggestion ? `
+              <div class="finding-fix">
+                <strong>Fix Recommendation</strong>
+                <span>${escapeHtml(f.suggestion)}</span>
+              </div>
+            ` : ''}
+          </div>
+        `;
+      });
+    }
+    
+    function fillQualityTab(findings) {
+      const list = document.getElementById('qualityList');
+      list.innerHTML = '';
+      
+      if (findings.length === 0) {
+        list.innerHTML = `
+          <div style="text-align:center; padding:30px; color:var(--text-tertiary);">
+            <div style="font-size:32px; margin-bottom:8px;">💡</div>
+            <div style="font-weight:600; color:var(--text-secondary);">Perfect PEP-8 & Structure.</div>
+            <div style="font-size:12.5px; margin-top:2px;">No cognitive complexity or style guidelines violations.</div>
+          </div>
+        `;
+        return;
+      }
+      
+      findings.forEach(f => {
+        const severity = f.severity || 'low';
+        const lineText = f.line_number ? `Line ${f.line_number}` : 'Global';
+        list.innerHTML += `
+          <div class="finding-item" style="border-left-color: ${getSeverityColor(severity)}" onclick="focusCodeLine(${f.line_number})">
+            <div class="finding-header">
+              <div class="finding-title">${escapeHtml(f.type || 'Style Alert')}</div>
+              <div class="finding-meta">
+                <span class="finding-line">${lineText}</span>
+                <span class="badge badge-${severity}">${severity}</span>
+              </div>
+            </div>
+            <div class="finding-msg">${escapeHtml(f.message)}</div>
+            ${f.suggestion ? `
+              <div class="finding-fix">
+                <strong>Formatting Recommendation</strong>
+                <span>${escapeHtml(f.suggestion)}</span>
+              </div>
+            ` : ''}
+          </div>
+        `;
+      });
+    }
+    
+    function fillSecurityTab(findings) {
+      const list = document.getElementById('securityList');
+      list.innerHTML = '';
+      
+      if (findings.length === 0) {
+        list.innerHTML = `
+          <div style="text-align:center; padding:30px; color:var(--text-tertiary);">
+            <div style="font-size:32px; margin-bottom:8px;">🛡️</div>
+            <div style="font-weight:600; color:var(--text-emerald); font-size:15px;">Zero security warnings.</div>
+            <div style="font-size:12.5px; margin-top:4px;">No SQL injections, hardcoded keys, or weak cryptography found.</div>
+          </div>
+        `;
+        return;
+      }
+      
+      findings.forEach(f => {
+        const severity = f.severity || 'low';
+        const lineText = f.line_number ? `Line ${f.line_number}` : 'Global';
+        list.innerHTML += `
+          <div class="finding-item" style="border-left-color: ${getSeverityColor(severity)}" onclick="focusCodeLine(${f.line_number})">
+            <div class="finding-header">
+              <div class="finding-title">${escapeHtml(f.type || 'Security Alert')}</div>
+              <div class="finding-meta">
+                <span class="finding-line">${lineText}</span>
+                <span class="badge badge-${severity}">${severity}</span>
+              </div>
+            </div>
+            <div class="finding-msg">${escapeHtml(f.message)}</div>
+            ${f.suggestion ? `
+              <div class="finding-fix">
+                <strong>Remediation Recommendation</strong>
+                <span>${escapeHtml(f.suggestion)}</span>
+              </div>
+            ` : ''}
+          </div>
+        `;
+      });
+    }
+
+    function getSeverityColor(sev) {
+      if (sev === 'high') return 'var(--accent-rose)';
+      if (sev === 'medium') return 'var(--accent-amber)';
+      return 'var(--accent-blue)';
+    }
+
+    // --- Interactive Code Line Highlighting ---
+    function renderInteractiveCode(codeText, filename, allFindings) {
+      codeHeaderFilename.innerText = filename;
+      interactiveCodeContainer.style.display = 'block';
+      
+      // Group findings by line number
+      const findingsByLine = {};
+      allFindings.forEach(f => {
+        if (f.line_number) {
+          if (!findingsByLine[f.line_number]) {
+            findingsByLine[f.line_number] = [];
+          }
+          findingsByLine[f.line_number].push(f);
+        }
+      });
+      
+      const lines = codeText.split('\n');
+      interactiveCodeLines.innerHTML = '';
+      
+      lines.forEach((lineText, idx) => {
+        const lineNum = idx + 1;
+        const lineFindings = findingsByLine[lineNum];
+        
+        let highlightClass = '';
+        if (lineFindings) {
+          // Find worst severity
+          const severities = lineFindings.map(lf => lf.severity.toLowerCase());
+          if (severities.includes('high')) highlightClass = 'highlight-high';
+          else if (severities.includes('medium')) highlightClass = 'highlight-medium';
+          else highlightClass = 'highlight-low';
+        }
+        
+        const lineEl = document.createElement('span');
+        lineEl.className = `code-line ${highlightClass}`;
+        lineEl.id = `codeLine-${lineNum}`;
+        lineEl.textContent = lineText || ' ';
+        
+        interactiveCodeLines.appendChild(lineEl);
+        
+        // If there are findings on this line, create an inline details tooltip that toggles
+        if (lineFindings) {
+          const tooltipEl = document.createElement('div');
+          let worstSev = highlightClass.replace('highlight-', '');
+          tooltipEl.className = `line-tooltip line-tooltip-${worstSev}`;
+          tooltipEl.style.display = 'none'; // hidden by default
+          tooltipEl.id = `tooltip-${lineNum}`;
+          
+          let content = '';
+          lineFindings.forEach(lf => {
+            let icon = lf.agent === 'security' ? '🔒' : lf.agent === 'bugs' ? '🐛' : '✨';
+            content += `<div style="margin-bottom:6px; font-weight:600;">[${icon} ${escapeHtml(lf.type)}] <span style="font-size:11px; opacity:0.8; text-transform:uppercase;">(${lf.severity})</span></div>`;
+            content += `<div style="margin-bottom:6px; color:var(--text-secondary);">${escapeHtml(lf.message)}</div>`;
+            if (lf.suggestion) {
+              content += `<div style="font-size:11px; color:var(--accent-emerald);">💡 ${escapeHtml(lf.suggestion)}</div>`;
+            }
+          });
+          
+          tooltipEl.innerHTML = content;
+          interactiveCodeLines.appendChild(tooltipEl);
+          
+          // Click event to toggle tooltip visibility
+          lineEl.addEventListener('click', () => {
+            const isVisible = tooltipEl.style.display === 'block';
+            tooltipEl.style.display = isVisible ? 'none' : 'block';
+          });
+        }
+      });
+    }
+    
+    function focusCodeLine(lineNum) {
+      if (!lineNum) return;
+      const el = document.getElementById(`codeLine-${lineNum}`);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        
+        // Trigger highlight flash
+        el.style.fontWeight = 'bold';
+        
+        // Open the tooltip automatically
+        const tooltip = document.getElementById(`tooltip-${lineNum}`);
+        if (tooltip) {
+          tooltip.style.display = 'block';
+        }
+        
+        setTimeout(() => {
+          el.style.fontWeight = 'normal';
+        }, 2000);
+      }
+    }
+
+    // --- Historical Review Logs (DB integrations) ---
+    async function fetchHistory() {
+      const historyList = document.getElementById('historyList');
+      historyList.innerHTML = '<div style="color:var(--text-tertiary); font-size:14px; text-align:center; padding:20px;">Fetching past review logs from database...</div>';
+      
+      try {
+        const response = await fetch('/reviews');
+        if (!response.ok) {
+          throw new Error("Failed to load history.");
+        }
+        
+        const reviews = await response.json();
+        historyList.innerHTML = '';
+        
+        if (reviews.length === 0) {
+          historyList.innerHTML = `
+            <div style="text-align:center; padding:30px; color:var(--text-tertiary);">
+              <div style="font-size:32px; margin-bottom:8px;">📁</div>
+              <div style="font-weight:600; color:var(--text-secondary);">No reviews in database.</div>
+              <div style="font-size:12.5px; margin-top:2px;">Run code reviews to save reports automatically.</div>
+            </div>
+          `;
+          return;
+        }
+        
+        reviews.forEach(rev => {
+          const formattedTime = formatDate(rev.timestamp);
+          const grade = getGradeForScore(rev.overall_score);
+          let color = 'var(--accent-blue)';
+          if (rev.overall_score >= 85) color = 'var(--accent-emerald)';
+          else if (rev.overall_score >= 65) color = 'var(--accent-amber)';
+          else color = 'var(--accent-rose)';
+
+          historyList.innerHTML += `
+            <div class="history-card" onclick="loadHistoryItem(${rev.id}, event)">
+              <div class="hist-main">
+                <div class="hist-title">${escapeHtml(rev.filename)}</div>
+                <div class="hist-time">${formattedTime} - <span style="color:var(--text-secondary); font-weight:500;">${escapeHtml(rev.overall_summary)}</span></div>
+              </div>
+              <div class="hist-stats">
+                <div class="hist-score-badge" style="color: ${color}; border-color: ${color};">${rev.overall_score} (${grade})</div>
+                <button class="btn-delete-hist" onclick="deleteHistoryItem(${rev.id}, event)" title="Delete record">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width:18px;height:18px;">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          `;
+        });
+        
+      } catch (err) {
+        console.error(err);
+        historyList.innerHTML = `<div style="color:var(--accent-rose); font-size:14px; text-align:center; padding:20px;">Error: ${escapeHtml(err.message)}</div>`;
+      }
+    }
+    
+    async function loadHistoryItem(id, event) {
+      // Prevent triggers on delete click
+      if (event.target.closest('.btn-delete-hist')) return;
+      
+      try {
+        const response = await fetch(`/reviews/${id}`);
+        if (!response.ok) throw new Error("Could not fetch review details.");
+        
+        const review = await response.json();
+        
+        // Populate inputs
+        editor.value = review.code;
+        filenameInput.value = review.filename;
+        
+        // Remove active states on templates bar
+        document.querySelectorAll('.template-btn').forEach(btn => btn.classList.remove('active'));
+        
+        // Display dashboard results
+        placeholderState.style.display = 'none';
+        simulationStage.style.display = 'none';
+        dashboardResults.style.display = 'flex';
+        
+        renderReview(review);
+      } catch (err) {
+        alert("Failed to load review: " + err.message);
+      }
+    }
+    
+    async function deleteHistoryItem(id, event) {
+      event.stopPropagation();
+      if (!confirm("Are you sure you want to delete this code review record?")) return;
+      
+      try {
+        const response = await fetch(`/reviews/${id}`, { method: 'DELETE' });
+        if (!response.ok) throw new Error("Could not delete review.");
+        
+        // Refresh tab history
+        fetchHistory();
+        
+      } catch (err) {
+        alert("Delete failed: " + err.message);
+      }
+    }
+
+    // --- Formatting Helpers ---
+    function escapeHtml(text) {
+      if (!text) return '';
+      return text.toString()
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+    
+    function formatDate(isoString) {
+      try {
+        const date = new Date(isoString);
+        return date.toLocaleString();
+      } catch (e) {
+        return isoString;
+      }
+    }
+    
+    function getGradeForScore(score) {
+      if (score >= 95) return "A+";
+      if (score >= 90) return "A";
+      if (score >= 80) return "B";
+      if (score >= 70) return "C";
+      if (score >= 60) return "D";
+      return "F";
+    }
+
+    // --- History Drawer Logic ---
+    const historyBtn    = document.getElementById('historyBtn');
+    const historyDrawer = document.getElementById('historyDrawer');
+    const historyOverlay= document.getElementById('historyOverlay');
+    const drawerClose   = document.getElementById('drawerClose');
+    const drawerSearch  = document.getElementById('drawerSearch');
+    const drawerHistList= document.getElementById('drawerHistList');
+    const drawerEmpty   = document.getElementById('drawerEmpty');
+    const drawerCount   = document.getElementById('drawerCount');
+    const historyBadge  = document.getElementById('historyBadge');
+
+    let allDrawerReviews = [];
+
+    function openDrawer() {
+      historyDrawer.classList.add('open');
+      historyOverlay.classList.add('open');
+      document.body.style.overflow = 'hidden';
+      fetchDrawerHistory();
+    }
+
+    function closeDrawer() {
+      historyDrawer.classList.remove('open');
+      historyOverlay.classList.remove('open');
+      document.body.style.overflow = '';
+    }
+
+    historyBtn.addEventListener('click', openDrawer);
+    drawerClose.addEventListener('click', closeDrawer);
+    historyOverlay.addEventListener('click', closeDrawer);
+
+    // Keyboard close
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeDrawer();
+    });
+
+    // Search filter
+    drawerSearch.addEventListener('input', () => {
+      const q = drawerSearch.value.toLowerCase().trim();
+      renderDrawerList(q ? allDrawerReviews.filter(r => r.filename.toLowerCase().includes(q)) : allDrawerReviews);
+    });
+
+    async function fetchDrawerHistory() {
+      drawerHistList.innerHTML = '';
+      drawerEmpty.style.display = 'none';
+      drawerHistList.innerHTML = `<div style="text-align:center;padding:30px;color:var(--text-tertiary);font-size:13px;">Loading...</div>`;
+      try {
+        const res = await fetch('/reviews');
+        if (!res.ok) throw new Error('Failed to fetch');
+        allDrawerReviews = await res.json();
+        renderDrawerList(allDrawerReviews);
+        updateHistoryBadge(allDrawerReviews.length);
+      } catch (err) {
+        drawerHistList.innerHTML = `<div style="color:var(--accent-rose);text-align:center;padding:20px;font-size:13px;">Error loading history</div>`;
+      }
+    }
+
+    function renderDrawerList(reviews) {
+      drawerHistList.innerHTML = '';
+      drawerCount.textContent = reviews.length;
+      if (reviews.length === 0) {
+        drawerEmpty.style.display = 'flex';
+        return;
+      }
+      drawerEmpty.style.display = 'none';
+      reviews.forEach(rev => {
+        const grade = getGradeForScore(rev.overall_score);
+        let scoreColor = 'var(--accent-blue)';
+        if (rev.overall_score >= 85) scoreColor = 'var(--accent-emerald)';
+        else if (rev.overall_score >= 65) scoreColor = 'var(--accent-amber)';
+        else scoreColor = 'var(--accent-rose)';
+
+        const bugCount = rev.bug_report?.issues?.length || 0;
+        const secCount = rev.security_report?.issues?.length || 0;
+        const timeStr  = formatDate(rev.timestamp);
+
+        const card = document.createElement('div');
+        card.className = 'drawer-hist-card';
+        card.innerHTML = `
+          <div class="dhc-top">
+            <div class="dhc-filename">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width:14px;height:14px;">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/>
+              </svg>
+              ${escapeHtml(rev.filename)}
+            </div>
+            <div>
+              <div class="dhc-score" style="color:${scoreColor}">${rev.overall_score}</div>
+              <div class="dhc-grade">${grade}</div>
+            </div>
+          </div>
+          <div class="dhc-bottom">
+            <div class="dhc-time">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width:12px;height:12px;">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              </svg>
+              ${timeStr}
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;">
+              <div class="dhc-chips">
+                ${bugCount > 0 ? `<span class="dhc-chip dhc-chip-bug">${bugCount} bug${bugCount>1?'s':''}</span>` : ''}
+                ${secCount > 0 ? `<span class="dhc-chip dhc-chip-sec">${secCount} sec</span>` : ''}
+              </div>
+              <button class="dhc-del" title="Delete" onclick="drawerDeleteItem(${rev.id}, event)">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width:14px;height:14px;">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+        `;
+        card.addEventListener('click', (e) => {
+          if (e.target.closest('.dhc-del')) return;
+          closeDrawer();
+          loadHistoryItem(rev.id, e);
+        });
+        drawerHistList.appendChild(card);
+      });
+    }
+
+    async function drawerDeleteItem(id, event) {
+      event.stopPropagation();
+      if (!confirm('Delete this review?')) return;
+      try {
+        const res = await fetch(`/reviews/${id}`, { method: 'DELETE' });
+        if (!res.ok) throw new Error('Delete failed');
+        allDrawerReviews = allDrawerReviews.filter(r => r.id !== id);
+        renderDrawerList(allDrawerReviews);
+        updateHistoryBadge(allDrawerReviews.length);
+        fetchHistory(); // refresh main history tab too
+      } catch (err) {
+        alert('Delete failed: ' + err.message);
+      }
+    }
+
+    function updateHistoryBadge(count) {
+      if (count > 0) {
+        historyBadge.textContent = count > 99 ? '99+' : count;
+        historyBadge.style.display = 'flex';
+      } else {
+        historyBadge.style.display = 'none';
+      }
+    }
+
+    // Load badge count on page load
+    (async () => {
+      try {
+        const res = await fetch('/reviews');
+        if (res.ok) {
+          const data = await res.json();
+          updateHistoryBadge(data.length);
+        }
+      } catch (_) {}
+    })();
+
+  </script>
+</body>
+</html>

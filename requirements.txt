@@ -1,0 +1,15 @@
+groq>=0.11.0
+rank-bm25>=0.2.2
+python-dotenv>=1.0.1
+flask>=3.0.0
+flask-cors>=4.0.0
+weaviate-client>=4.0.0
+fastembed>=0.4.0
+tiktoken>=0.7.0
+sentence-transformers>=2.5.1
+pyautogen>=0.10.0
+autogen-ext[openai]>=0.7.5
+fastapi>=0.115.0
+uvicorn[standard]>=0.30.0
+itsdangerous>=2.2.0
+python-multipart>=0.0.9

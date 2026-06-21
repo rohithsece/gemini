@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Code Generator</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {--bg:#fff;--surface:#f9fafb;--border:#e2e8f0;--accent:#3d5afe;--accent2:#7c4dff;--text:#0f172a;--text-muted:#5c6b80;--radius:12px;--font:'Inter',system-ui,sans-serif;}
+    body {font-family:var(--font);background:var(--bg);color:var(--text);margin:0;display:flex;justify-content:center;align-items:center;min-height:100vh;}
+    .container {max-width:800px;width:100%;padding:20px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:0 4px 12px rgba(0,0,0,.05);}
+    textarea {width:100%;height:120px;padding:10px;border:1px solid var(--border);border-radius:var(--radius);font-family:var(--font);resize:vertical;box-sizing:border-box;}
+    .row {display:flex;gap:10px;margin-top:10px;flex-wrap:wrap;}
+    button {padding:10px 20px;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;border:none;border-radius:var(--radius);cursor:pointer;font-weight:600;}
+    button.secondary {background:#fff;color:var(--text);border:1px solid var(--border);}
+    button.danger {background:#ef4444;}
+    pre {background:#f3f4f6;padding:15px;border-radius:var(--radius);overflow:auto;margin-top:15px;white-space:pre-wrap;}
+    .hist-fab {position:fixed;bottom:24px;right:24px;width:52px;height:52px;border-radius:50%;font-size:22px;box-shadow:0 4px 14px rgba(61,90,254,.4);}
+    .overlay {display:none;position:fixed;inset:0;background:rgba(15,23,42,.35);z-index:10;}
+    .overlay.open {display:block;}
+    .drawer {position:fixed;top:0;right:-420px;width:400px;max-width:92vw;height:100vh;background:#fff;border-left:1px solid var(--border);z-index:11;transition:right .25s;display:flex;flex-direction:column;}
+    .drawer.open {right:0;}
+    .drawer-hd {display:flex;justify-content:space-between;align-items:center;padding:16px;border-bottom:1px solid var(--border);}
+    .drawer-bd {flex:1;overflow:auto;padding:12px;}
+    .card {border:1px solid var(--border);border-radius:var(--radius);padding:12px;margin-bottom:10px;background:var(--surface);}
+    .card small {color:var(--text-muted);}
+    .card pre {margin:8px 0 0;font-size:12px;max-height:120px;}
+    .card-actions {display:flex;gap:6px;margin-top:8px;}
+    .card-actions button {padding:6px 10px;font-size:12px;margin:0;}
+    .empty {text-align:center;color:var(--text-muted);padding:40px 10px;}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <p style="font-size:14px;color:var(--text-muted);margin:0 0 12px"><a href="/query-explorer">Query Explorer</a> · <a href="/api/students/docs">FastAPI Docs</a></p>
+    <h2>Generate Code</h2>
+    <textarea id="desc" placeholder="e.g. Create a Python query to insert student records into SQLite and log with save_document"></textarea>
+    <div class="row">
+      <button onclick="generate()">Generate</button>
+      <button class="secondary" onclick="saveCurrent()" id="saveBtn" style="display:none">Save to History</button>
+    </div>
+    <p id="savedMsg" style="display:none;color:#059669;font-size:14px;margin-top:10px;"></p>
+    <h3 id="outputTitle" style="display:none;margin-top:20px;margin-bottom:8px;font-size:16px;color:var(--text);font-weight:600;">Execution Output / Answer</h3>
+    <pre id="output" style="display:none;background:#f0fdf4;color:#166534;border:1px solid #bbf7d0;padding:15px;border-radius:var(--radius);overflow:auto;white-space:pre-wrap;font-family:'Fira Code',monospace;font-size:13px;box-shadow:inset 0 1px 3px rgba(0,0,0,0.02);transition:all 0.3s ease;"></pre>
+    <h3 style="margin-top:20px;margin-bottom:8px;font-size:16px;color:var(--text);font-weight:600;">Generated Code</h3>
+    <pre id="result" style="display:none;"></pre>
+  </div>
+
+  <button class="hist-fab" title="Code History" onclick="toggleHist(true)">📜</button>
+  <div class="overlay" id="overlay" onclick="toggleHist(false)"></div>
+  <div class="drawer" id="drawer">
+    <div class="drawer-hd"><h3>Code History</h3><button class="secondary" onclick="toggleHist(false)">✕</button></div>
+    <div class="drawer-bd" id="histList"></div>
+  </div>
+
+  <script>
+    let lastCode = '', lastDesc = '';
+
+    function toggleHist(open) {
+      document.getElementById('overlay').classList.toggle('open', open);
+      document.getElementById('drawer').classList.toggle('open', open);
+      if (open) loadHistory();
+    }
+
+    async function generate() {
+      const desc = document.getElementById('desc').value.trim();
+      if (!desc) { alert('Please enter a description'); return; }
+      
+      const pre = document.getElementById('result');
+      const savedMsg = document.getElementById('savedMsg');
+      const outputPre = document.getElementById('output');
+      const outputTitle = document.getElementById('outputTitle');
+      
+      pre.style.display = 'none';
+      savedMsg.style.display = 'none';
+      outputPre.style.display = 'none';
+      outputTitle.style.display = 'none';
+      
+      const btn = document.querySelector("button[onclick='generate()']");
+      const oldBtnText = btn.textContent;
+      btn.textContent = 'Generating & Running...';
+      btn.disabled = true;
+      
+      try {
+        const resp = await fetch('/api/students/queries/generate', { 
+          method: 'POST', 
+          headers: { 'Content-Type': 'application/json' }, 
+          body: JSON.stringify({ description: desc }) 
+        });
+        const data = await resp.json();
+        if (data.code) {
+          pre.textContent = data.code;
+          pre.style.display = 'block';
+          lastCode = data.code;
+          lastDesc = desc;
+          document.getElementById('saveBtn').style.display = 'none';
+          
+          if (data.saved_file) {
+            savedMsg.textContent = 'Saved to: ' + data.saved_file;
+            savedMsg.style.display = 'block';
+          }
+          
+          if (data.output) {
+            outputPre.textContent = data.output;
+            outputPre.style.display = 'block';
+            outputTitle.style.display = 'block';
+            
+            // Customize styling based on success/error/warning
+            if (data.output.toLowerCase().includes("error") || data.output.toLowerCase().includes("failure")) {
+              outputPre.style.background = '#fef2f2';
+              outputPre.style.color = '#991b1b';
+              outputPre.style.borderColor = '#fca5a5';
+            } else {
+              outputPre.style.background = '#f0fdf4';
+              outputPre.style.color = '#166534';
+              outputPre.style.borderColor = '#bbf7d0';
+            }
+          }
+        } else {
+          pre.textContent = 'Error: ' + (data.error || data.detail || 'unknown');
+          pre.style.display = 'block';
+        }
+      } catch (err) {
+        pre.textContent = 'Error: ' + err.message;
+        pre.style.display = 'block';
+      } finally {
+        btn.textContent = oldBtnText;
+        btn.disabled = false;
+      }
+    }
+
+    async function saveCurrent() {
+      if (!lastCode || !lastDesc) return;
+      await fetch('/code-history', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ description: lastDesc, code: lastCode }) });
+      document.getElementById('saveBtn').style.display = 'none';
+      if (document.getElementById('drawer').classList.contains('open')) loadHistory();
+    }
+
+    async function loadHistory() {
+      const el = document.getElementById('histList');
+      const rows = await (await fetch('/code-history')).json();
+      if (!rows.length) { el.innerHTML = '<div class="empty">No saved code yet</div>'; return; }
+      el.innerHTML = rows.map(r => `
+        <div class="card" data-id="${r.id}">
+          <strong>${esc(r.description)}</strong><br><small>${new Date(r.timestamp).toLocaleString()}</small>
+          <pre>${esc(r.code)}</pre>
+          <div class="card-actions">
+            <button class="secondary" onclick="loadEntry(${r.id})">Load</button>
+            <button class="secondary" onclick="editEntry(${r.id})">Edit</button>
+            <button class="danger" onclick="delEntry(${r.id})">Delete</button>
+          </div>
+        </div>`).join('');
+    }
+
+    async function loadEntry(id) {
+      const r = await (await fetch('/code-history/' + id)).json();
+      document.getElementById('desc').value = r.description;
+      document.getElementById('result').textContent = r.code;
+      document.getElementById('result').style.display = 'block';
+      lastCode = r.code; lastDesc = r.description;
+      toggleHist(false);
+    }
+
+    async function editEntry(id) {
+      const r = await (await fetch('/code-history/' + id)).json();
+      const desc = prompt('Description:', r.description);
+      if (desc === null) return;
+      const code = prompt('Code:', r.code);
+      if (code === null) return;
+      await fetch('/code-history/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ description: desc, code }) });
+      loadHistory();
+    }
+
+    async function delEntry(id) {
+      if (!confirm('Delete this entry?')) return;
+      await fetch('/code-history/' + id, { method: 'DELETE' });
+      loadHistory();
+    }
+
+    function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+  </script>
+</body>
+</html>

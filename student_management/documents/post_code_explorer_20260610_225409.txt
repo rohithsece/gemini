@@ -1,0 +1,8 @@
+Method: POST
+Path: /code
+Payload: 
+Status: 500 INTERNAL SERVER ERROR
+Response: {
+  "output": "Execution Error: invalid syntax (read_records.py, line 1)",
+  "status": "error"
+}

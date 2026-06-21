@@ -1,0 +1,1 @@
+INSERT INTO records (student_id, course, grade) VALUES (10045, 'Math 101', 'B+')

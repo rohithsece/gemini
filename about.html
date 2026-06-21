@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>About – RAG vs AI Agent</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #f5f7fa;
+      --panel-bg: #ffffff;
+      --border: #e2e8f0;
+      --accent: #3d5afe;
+      --accent2: #7c4dff;
+      --accent-glow: rgba(61, 90, 254, 0.18);
+      --text: #0f172a;
+      --text-muted: #5c6b80;
+      --radius: 12px;
+      --font: 'Inter', system-ui, sans-serif;
+    }
+    .dark {
+      --bg: #1a1e2b;
+      --panel-bg: #2d3349;
+      --border: #3a416a;
+      --accent: #8c9eff;
+      --accent2: #b3bfff;
+      --accent-glow: rgba(140, 158, 255, 0.18);
+      --text: #e0e7ff;
+      --text-muted: #a0aec0;
+    }
+    body { margin:0; font-family: var(--font); background: var(--bg); color: var(--text); display:flex; flex-direction:column; min-height:100vh; }
+    .topbar { padding:16px 24px; background: var(--panel-bg); display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); }
+    .container { max-width:960px; margin:0 auto; padding:24px; }
+    h1 { text-align:center; margin:24px 0; }
+    p { line-height:1.6; }
+    .btn { background: linear-gradient(135deg, var(--accent), var(--accent2)); color:#fff; border:none; padding:8px 16px; border-radius:var(--radius); cursor:pointer; }
+    .btn-ghost { background: var(--panel-bg); color: var(--text-muted); border:1px solid var(--border); }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="topbar-title">RAG vs AI Agent</div>
+    <div>
+      <button id="darkModeToggle" class="btn btn-ghost">🌙</button>
+      <a href="/" class="btn btn-ghost" style="margin-left:8px;">Home</a>
+      <a href="/about" class="btn btn-ghost" style="margin-left:8px;">About</a>
+    </div>
+  </div>
+  <h1>About This Demo</h1>
+  <div class="container">
+    <p>This interactive demo showcases a Retrieval‑Augmented Generation (RAG) pipeline alongside a generative AI agent.
+    It allows you to compare answers from a vector‑search‑based RAG system and an LLM‑driven agent.
+    The UI features a sleek glass‑morphism design, dark‑mode toggle, and micro‑animations for a premium feel.</p>
+    <p>Built with:</p>
+    <ul>
+      <li>Flask + FastAPI (uvicorn) for the server</li>
+      <li>Weaviate as the vector store</li>
+      <li>Groq LLM for fast inference</li>
+      <li>Vanilla HTML/CSS/JS with a modern design system</li>
+    </ul>
+  </div>
+  <script>
+    // Dark mode handling (same as index.html)
+    const darkModeToggle = document.getElementById('darkModeToggle');
+    const currentTheme = localStorage.getItem('theme') || 'light';
+    if (currentTheme === 'dark') {
+      document.body.classList.add('dark');
+      darkModeToggle.textContent = '☀️';
+    }
+    darkModeToggle.addEventListener('click', () => {
+      document.body.classList.toggle('dark');
+      const isDark = document.body.classList.contains('dark');
+      localStorage.setItem('theme', isDark ? 'dark' : 'light');
+      darkModeToggle.textContent = isDark ? '☀️' : '🌙';
+    });
+  </script>
+</body>
+</html>

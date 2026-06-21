@@ -1,0 +1,8 @@
+Method: POST
+Path: /code
+Payload: 
+Status: 500 INTERNAL SERVER ERROR
+Response: {
+  "output": "Execution Error: No module named 'queries.document_store'",
+  "status": "error"
+}

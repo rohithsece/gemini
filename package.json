@@ -1,0 +1,11 @@
+{
+  "name": "rag-agent-demo",
+  "version": "1.0.0",
+  "description": "RAG vs AI Agent demo with UI and tests",
+  "scripts": {
+    "test:e2e": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.46.0"
+  }
+}

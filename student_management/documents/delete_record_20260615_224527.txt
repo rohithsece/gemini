@@ -1,0 +1,1 @@
+[DELETE_RECORD] Failure: No matching record found for record_id=1 and student_id=10045.
